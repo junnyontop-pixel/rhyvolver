@@ -21,7 +21,21 @@ struct Note {
     NoteType type;
 };
 
+// 판정 이펙트 구조체
+struct JudgeEffect {
+    Vector2 position;     
+    const char* text;  
+    Color color;        
+    float lifetime;      
+};
+
+std::vector<JudgeEffect> JudgeEffects;
+
 int main() {
+    // 판정 팝업 위한 변수
+    const char* hitResult = "";
+    Color resultColor = GRAY;
+
     // 창 생성 및 설정
     InitWindow(1280, 720, "Rhyvolver - Prototype");
     InitAudioDevice();
@@ -107,6 +121,8 @@ int main() {
 
             if (songTime - note.hitTime > HIT_WINDOW_GOOD) {
                 printf("miss - passed\n");
+                hitResult = "MISS";
+                resultColor = RED;
                 note.isAlive = false;
             }
         }
@@ -127,11 +143,25 @@ int main() {
                         float diff = fabs(songTime - note.hitTime);
                         if (diff <= HIT_WINDOW_PERFECT) {
                             printf("hit: perfect diff %.1f ms\n", diff * 1000.0f);
+                            hitResult = "PERFECT";
+                            resultColor = GOLD;
                         } else if (diff <= HIT_WINDOW_GOOD) {
                             printf("hit: good diff %.1f ms\n", diff * 1000.0f);
+                            hitResult = "GOOD";
+                            resultColor = GREEN;
                         } else {
                             printf("miss\n");
+                            hitResult = "MISS";
+                            resultColor = RED;
                         }
+
+                        // 판정 팝업
+                        JudgeEffect eff;
+                        eff.position = { note.x, note.y }; 
+                        eff.text = hitResult;            
+                        eff.color = resultColor;
+                        eff.lifetime = 0.5f;            
+                        JudgeEffects.push_back(eff);
 
                         note.isAlive = false;
                         break;
@@ -160,6 +190,15 @@ int main() {
                         DrawCircleLines(static_cast<int>(drawX), static_cast<int>(drawY), ringRadius, YELLOW);
                     }
                 }
+            }
+
+            // 판정 이펙트 렌더링
+            for (const auto& eff : JudgeEffects) {
+                int textWidth = MeasureText(eff.text, 30);
+                int drawTextX = static_cast<int>(eff.position.x + viewOffset.x) - (textWidth / 2);
+                int drawTextY = static_cast<int>(eff.position.y + viewOffset.y) - 40; 
+
+                DrawText(eff.text, drawTextX, drawTextY, 30, eff.color);
             }
 
             // 우측 하단 리볼버 모델 렌더링
