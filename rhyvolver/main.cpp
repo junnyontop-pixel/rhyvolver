@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 
 enum NoteType {
     normal_note,
@@ -26,7 +27,8 @@ struct JudgeEffect {
     Vector2 position;     
     const char* text;  
     Color color;        
-    float lifetime;      
+    float lifetime;
+    bool isAlive;    
 };
 
 std::vector<JudgeEffect> JudgeEffects;
@@ -115,14 +117,38 @@ int main() {
             ammo = 6;
         }
 
+        float dt = GetFrameTime();
+
+        for (auto& eff : JudgeEffects) {
+            eff.lifetime -= dt;
+            if (eff.lifetime <= 0.0f) {
+                eff.isAlive = false;
+            }
+        }
+
+        JudgeEffects.erase(
+            std::remove_if(JudgeEffects.begin(), JudgeEffects.end(), [](const JudgeEffect& eff) {
+                return !eff.isAlive;
+            }),
+            JudgeEffects.end()
+        );
+
         // 시간 지난 노트 처리
         for (auto& note : Notes) {
             if (!note.isAlive) continue;
 
             if (songTime - note.hitTime > HIT_WINDOW_GOOD) {
                 printf("miss - passed\n");
-                hitResult = "MISS";
-                resultColor = RED;
+                
+                // 판정 팝업
+                JudgeEffect eff;
+                eff.position = { note.x, note.y }; 
+                eff.text = "MISS";            
+                eff.color = RED;
+                eff.lifetime = 0.5f;            
+                eff.isAlive = true;
+                JudgeEffects.push_back(eff);
+
                 note.isAlive = false;
             }
         }
@@ -143,25 +169,38 @@ int main() {
                         float diff = fabs(songTime - note.hitTime);
                         if (diff <= HIT_WINDOW_PERFECT) {
                             printf("hit: perfect diff %.1f ms\n", diff * 1000.0f);
-                            hitResult = "PERFECT";
-                            resultColor = GOLD;
+
+                            // 판정 팝업
+                            JudgeEffect eff;
+                            eff.position = { note.x, note.y }; 
+                            eff.text = "PERFECT";            
+                            eff.color = GOLD;
+                            eff.lifetime = 0.5f;            
+                            eff.isAlive = true;
+                            JudgeEffects.push_back(eff);
                         } else if (diff <= HIT_WINDOW_GOOD) {
                             printf("hit: good diff %.1f ms\n", diff * 1000.0f);
-                            hitResult = "GOOD";
-                            resultColor = GREEN;
+
+                            // 판정 팝업
+                            JudgeEffect eff;
+                            eff.position = { note.x, note.y }; 
+                            eff.text = "GOOD";            
+                            eff.color = GREEN;
+                            eff.lifetime = 0.5f;            
+                            eff.isAlive = true;
+                            JudgeEffects.push_back(eff);
                         } else {
                             printf("miss\n");
-                            hitResult = "MISS";
-                            resultColor = RED;
+                            
+                            // 판정 팝업
+                            JudgeEffect eff;
+                            eff.position = { note.x, note.y }; 
+                            eff.text = "MISS";            
+                            eff.color = RED;
+                            eff.lifetime = 0.5f;            
+                            eff.isAlive = true;
+                            JudgeEffects.push_back(eff);
                         }
-
-                        // 판정 팝업
-                        JudgeEffect eff;
-                        eff.position = { note.x, note.y }; 
-                        eff.text = hitResult;            
-                        eff.color = resultColor;
-                        eff.lifetime = 0.5f;            
-                        JudgeEffects.push_back(eff);
 
                         note.isAlive = false;
                         break;
@@ -193,7 +232,7 @@ int main() {
             }
 
             // 판정 이펙트 렌더링
-            for (const auto& eff : JudgeEffects) {
+            for (auto& eff : JudgeEffects) {
                 int textWidth = MeasureText(eff.text, 30);
                 int drawTextX = static_cast<int>(eff.position.x + viewOffset.x) - (textWidth / 2);
                 int drawTextY = static_cast<int>(eff.position.y + viewOffset.y) - 40; 
